@@ -1,0 +1,17 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     sample_day6_pt2
+relocations:
+  - { offsetInCU: 0x26, offset: 0x26, size: 0x8, addend: 0x0, symName: _find_karel, symObjAddr: 0x0, symBinAddr: 0x10000249C, symSize: 0x1F0 }
+  - { offsetInCU: 0x41, offset: 0x41, size: 0x8, addend: 0x0, symName: _find_karel, symObjAddr: 0x0, symBinAddr: 0x10000249C, symSize: 0x1F0 }
+  - { offsetInCU: 0xBD, offset: 0xBD, size: 0x8, addend: 0x0, symName: _move, symObjAddr: 0x1F0, symBinAddr: 0x10000268C, symSize: 0x298 }
+  - { offsetInCU: 0xFD, offset: 0xFD, size: 0x8, addend: 0x0, symName: _turn_right, symObjAddr: 0x488, symBinAddr: 0x100002924, symSize: 0x1F8 }
+  - { offsetInCU: 0x13D, offset: 0x13D, size: 0x8, addend: 0x0, symName: _print_karel, symObjAddr: 0x680, symBinAddr: 0x100002B1C, symSize: 0xDC }
+  - { offsetInCU: 0x1A7, offset: 0x1A7, size: 0x8, addend: 0x0, symName: _check_front, symObjAddr: 0x75C, symBinAddr: 0x100002BF8, symSize: 0x2F0 }
+  - { offsetInCU: 0x1EB, offset: 0x1EB, size: 0x8, addend: 0x0, symName: _check_front_x, symObjAddr: 0xA4C, symBinAddr: 0x100002EE8, symSize: 0x220 }
+  - { offsetInCU: 0x22F, offset: 0x22F, size: 0x8, addend: 0x0, symName: _check_front_dir, symObjAddr: 0xC6C, symBinAddr: 0x100003108, symSize: 0x220 }
+  - { offsetInCU: 0x273, offset: 0x273, size: 0x8, addend: 0x0, symName: _check_boundary, symObjAddr: 0xE8C, symBinAddr: 0x100003328, symSize: 0x1B0 }
+  - { offsetInCU: 0x2B7, offset: 0x2B7, size: 0x8, addend: 0x0, symName: _count_x, symObjAddr: 0x103C, symBinAddr: 0x1000034D8, symSize: 0xC8 }
+  - { offsetInCU: 0x333, offset: 0x333, size: 0x8, addend: 0x0, symName: _karel_action, symObjAddr: 0x1104, symBinAddr: 0x1000035A0, symSize: 0x310 }
+  - { offsetInCU: 0x3FE, offset: 0x3FE, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x1414, symBinAddr: 0x1000038B0, symSize: 0x598 }
+...

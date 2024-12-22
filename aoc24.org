@@ -1,0 +1,2545 @@
+#+Title: Advent of code 2024
+#+Author: Tyler Burns
+#+Date: December 1, 2024
+#+Purpose: to do advent of code in C
+
+* The days of advent
+** December 1
+Here, we will try to do as much literate programming as we can as we work toward a solution. We have chosen C as our language.
+
+[[https://adventofcode.com/2024/day/1][Day 1]]
+
+Example list:
+
+#+begin_src
+3   4
+4   3
+2   5
+1   3
+3   9
+3   3
+#+end_src
+
+Actual puzzle input is [[https://adventofcode.com/2024/day/1/input][here]].
+
+Part 1:
+
+/Maybe the lists are only off by a small amount! To find out, pair up the numbers and measure how far apart they are. Pair up the smallest number in the left list with the smallest number in the right list, then the second-smallest left number with the second-smallest right number, and so on./
+
+Part 2:
+
+/Within each pair, figure out how far apart the two numbers are; you'll need to add up all of those distances. For example, if you pair up a 3 from the left list with a 7 from the right list, the distance apart is 4; if you pair up a 9 with a 3, the distance apart is 6./
+
+Part 3:
+
+/To find the total distance between the left list and the right list, add up the distances between all of the pairs you found. In the example above, this is 2 + 1 + 0 + 1 + 2 + 5, a total distance of 11!/
+
+With the final question being what is the total distance.
+** December 2
+Going to do the same text file strategy. Not sure what else I could do. Maybe I need to make a function in C that reads files, like that one guy did and just paste it in. We can include malloc and what not.
+
+Stuck on the following.
+
+We have:
+char arr = "1 12 4 34 5";
+
+We need
+int arr = {1, 12, 4, 34, 5};
+
+So we made a sliding window solution below.
+#+begin_src C :results output
+#include <stdio.h>
+#include <string.h>
+
+int main() {
+    char str[] = "1 12 4 34 5";
+    int str_size = sizeof(str)/sizeof(str[0]);
+
+    int prev = -1;
+    int next = -1;
+    int result[5];
+    int count = 0;
+    for (int i = 0; i < str_size - 1; i++) {
+        int curr = str[i] - '0';
+
+        if (i > 0) {
+            prev = str[i - 1] - '0';
+        }
+
+        if (i < str_size - 2) {
+            next = str[i + 1] - '0';
+        } else {
+            next = -1;
+        }
+
+        if (curr > 0 && prev > 0) {
+            result[count] = 10*prev + curr;
+            count++;
+        } else if (curr > 0 && prev < 0 && next < 0) {
+            result[count] = curr;
+            count++;
+        }
+    }
+
+    for (int i = 0; i < 5; i++) {
+        printf("%d\n", result[i]);
+    }
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: 1
+: 12
+: 4
+: 34
+: 5
+
+Nailed it. Finally. Spent an embarrassingly long time trying to figure that out. What I learned: I'm going to have to get better at problem decomposition in C. I need to think a few more steps ahead compared to R and python.
+
+The part that hung me up, that I'd get right in python or R: dynamically growing an array. That's a huge weak spot. And I think the solution is getting good at malloc and realloc. Otherwise its very difficult.
+
+Otherwise what I could do is declare an array that is too big in the first place and then just bring it down to a smaller size after the fact. Then cast everything as an int. But this got the job done so I can't complain.
+** December 3
+Converrt this:
+xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))
+
+Into:
+(2*4 + 3*7 + 5*5 + 11*8 + 8*5)
+
+Testing regex in general, before we try it in C.
+
+#+begin_src sh :results output
+echo abcd | grep abcd
+#+end_src
+
+#+RESULTS:
+: abcd
+
+#+begin_src sh
+echo abcd | grep ac
+#+end_src
+
+#+RESULTS:
+
+So that's how it works. Now we try something harder.
+
+#+begin_src sh
+echo '12' | grep '\d'
+#+end_src
+
+#+RESULTS:
+: 12
+
+Or
+
+#+begin_src sh
+echo '12345' | grep '[0-9]\{1,\}'
+#+end_src
+
+#+RESULTS:
+: 12345
+
+Ok, that works. So we don't need extended regex. Now how might we stuff that into C?
+
+#+begin_src C :results output
+#include <stdio.h>
+#include <regex.h>
+#include <string.h>
+
+int main() {
+    const char *input = "12345";
+    const char *pattern = "[0-9]+";
+
+    regex_t regex;
+    int reti;
+
+    // Compile the regular expression
+    reti = regcomp(&regex, pattern, REG_EXTENDED);
+    if (reti) {
+        fprintf(stderr, "Could not compile regex\n");
+        return 1;
+    }
+
+    // Execute the regex
+    reti = regexec(&regex, input, 0, NULL, 0);
+    if (!reti) {
+        printf("Match found: %s\n", input);
+    } else if (reti == REG_NOMATCH) {
+        printf("No match\n");
+    } else {
+        char error_message[100];
+        regerror(reti, &regex, error_message, sizeof(error_message));
+        fprintf(stderr, "Regex match failed: %s\n", error_message);
+        return 1;
+    }
+
+    // Free memory allocated to the pattern buffer by regcomp
+    regfree(&regex);
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: Match found: 12345
+
+Ok, so this works. Now can we change it to what I need? Back to shell.
+
+We have
+xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))
+
+Pull out mul([0-9]+,[0-9]+)
+
+#+begin_src sh
+echo 'xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))' | grep -E -o 'mul\([0-9]+,[0-9]+\)'
+#+end_src
+
+#+RESULTS:
+
+The above works for the actual command line. Gives us:
+mul(2,4)
+mul(5,5)
+mul(11,8)
+mul(8,5)
+
+So we can test in C.
+
+#+begin_src C :results output
+#include <stdio.h>
+#include <regex.h>
+#include <string.h>
+
+int main() {
+    const char *input = "xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))";
+    const char *pattern = "mul\\([0-9]+,[0-9]+\\)";
+    regex_t regex;
+    regmatch_t match;
+    int reti;
+
+    // Compile the regex
+    reti = regcomp(&regex, pattern, REG_EXTENDED);
+    if (reti) {
+        fprintf(stderr, "Could not compile regex\n");
+        return 1;
+    }
+
+    // Search the input string for matches
+    const char *cursor = input;
+    while (!regexec(&regex, cursor, 1, &match, 0)) {
+        // Extract the match
+        int start = match.rm_so;
+        int end = match.rm_eo;
+
+        // Print the matched substring
+        printf("%.*s\n", end - start, cursor + start);
+
+        // Move the cursor forward
+        cursor += end;
+    }
+
+    // Free the compiled regex
+    regfree(&regex);
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+
+At this point, we need to be able to convert mul(x, y) into x*y. One way we can do that is to turn the above into an array, and then iterate thru the array converting into multiplication, and then sum up the array.
+
+#+begin_src C :results output
+#include <stdio.h>
+#include <stdlib.h>
+#include <regex.h>
+#include <string.h>
+
+int main() {
+    const char *input = "xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))";
+    const char *pattern = "mul\\([0-9]+,[0-9]+\\)";
+    regex_t regex;
+    regmatch_t match;
+    int reti;
+
+    // Compile the regex
+    reti = regcomp(&regex, pattern, REG_EXTENDED);
+    if (reti) {
+        fprintf(stderr, "Could not compile regex\n");
+        return 1;
+    }
+
+    // Allocate memory for an array of substrings
+    size_t match_capacity = 10; // Initial capacity for matches
+    size_t match_count = 0;
+    char **matches = malloc(match_capacity * sizeof(char *));
+    if (!matches) {
+        fprintf(stderr, "Memory allocation failed\n");
+        regfree(&regex);
+        return 1;
+    }
+
+    // Search the input string for matches
+    const char *cursor = input;
+    while (!regexec(&regex, cursor, 1, &match, 0)) {
+        // Extract the match
+        int start = match.rm_so;
+        int end = match.rm_eo;
+        int match_length = end - start;
+
+        // Dynamically grow the array if needed
+        if (match_count >= match_capacity) {
+            match_capacity *= 2;
+            char **new_matches = realloc(matches, match_capacity * sizeof(char *));
+            if (!new_matches) {
+                fprintf(stderr, "Memory reallocation failed\n");
+                // Free already allocated matches
+                for (size_t i = 0; i < match_count; i++) {
+                    free(matches[i]);
+                }
+                free(matches);
+                regfree(&regex);
+                return 1;
+            }
+            matches = new_matches;
+        }
+
+        // Allocate memory for the current match and copy it
+        matches[match_count] = malloc(match_length + 1);
+        if (!matches[match_count]) {
+            fprintf(stderr, "Memory allocation failed for match\n");
+            // Free already allocated matches
+            for (size_t i = 0; i < match_count; i++) {
+                free(matches[i]);
+            }
+            free(matches);
+            regfree(&regex);
+            return 1;
+        }
+        strncpy(matches[match_count], cursor + start, match_length);
+        matches[match_count][match_length] = '\0'; // Null-terminate the string
+        match_count++;
+
+        // Move the cursor forward
+        cursor += end;
+    }
+
+    // Print all matches
+    printf("Matches found:\n");
+    for (size_t i = 0; i < match_count; i++) {
+        printf("%s\n", matches[i]);
+        free(matches[i]); // Free each match after printing
+    }
+    free(matches); // Free the array of pointers
+
+    // Free the compiled regex
+    regfree(&regex);
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: Matches found:
+: mul(2,4)
+: mul(5,5)
+: mul(11,8)
+: mul(8,5)
+
+Ok, great. Now we have to add a piece where the numbers are pulled out of the parens, converted into ints, and multiplied together.
+
+#+begin_src C :results output
+#include <stdio.h>
+#include <stdlib.h>
+#include <regex.h>
+#include <string.h>
+
+int main() {
+    const char *input = "xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))";
+    const char *pattern = "mul\\([0-9]+,[0-9]+\\)";
+    regex_t regex;
+    regmatch_t match;
+    int reti;
+
+    // Compile the regex
+    reti = regcomp(&regex, pattern, REG_EXTENDED);
+    if (reti) {
+        fprintf(stderr, "Could not compile regex\n");
+        return 1;
+    }
+
+    // Allocate memory for an array of substrings
+    size_t match_capacity = 10; // Initial capacity for matches
+    size_t match_count = 0;
+    char **matches = malloc(match_capacity * sizeof(char *));
+    if (!matches) {
+        fprintf(stderr, "Memory allocation failed\n");
+        regfree(&regex);
+        return 1;
+    }
+
+    // Search the input string for matches
+    const char *cursor = input;
+    while (!regexec(&regex, cursor, 1, &match, 0)) {
+        // Extract the match
+        int start = match.rm_so;
+        int end = match.rm_eo;
+        int match_length = end - start;
+
+        // Dynamically grow the array if needed
+        if (match_count >= match_capacity) {
+            match_capacity *= 2;
+            char **new_matches = realloc(matches, match_capacity * sizeof(char *));
+            if (!new_matches) {
+                fprintf(stderr, "Memory reallocation failed\n");
+                for (size_t i = 0; i < match_count; i++) {
+                    free(matches[i]);
+                }
+                free(matches);
+                regfree(&regex);
+                return 1;
+            }
+            matches = new_matches;
+        }
+
+        // Allocate memory for the current match and copy it
+        matches[match_count] = malloc(match_length + 1);
+        if (!matches[match_count]) {
+            fprintf(stderr, "Memory allocation failed for match\n");
+            for (size_t i = 0; i < match_count; i++) {
+                free(matches[i]);
+            }
+            free(matches);
+            regfree(&regex);
+            return 1;
+        }
+        strncpy(matches[match_count], cursor + start, match_length);
+        matches[match_count][match_length] = '\0'; // Null-terminate the string
+        match_count++;
+
+        // Move the cursor forward
+        cursor += end;
+    }
+
+    // Process each match
+    printf("Results:\n");
+    for (size_t i = 0; i < match_count; i++) {
+        int num1, num2;
+
+        // Extract the two integers from the substring
+
+        if (sscanf(matches[i], "mul(%d,%d)", &num1, &num2) == 2) {
+            // Multiply the two integers
+            int result = num1 * num2;
+            printf("%s -> %d\n", matches[i], result);
+        } else {
+            printf("Failed to extract integers from: %s\n", matches[i]);
+        }
+
+        free(matches[i]); // Free each match after processing
+    }
+    free(matches); // Free the array of pointers
+
+    // Free the compiled regex
+    regfree(&regex);
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: Results:
+: mul(2,4) -> 8
+: mul(5,5) -> 25
+: mul(11,8) -> 88
+: mul(8,5) -> 40
+
+#+begin_src C :results output
+#include <stdio.h>
+
+int main() {
+    const char *input = "mul(3,7)";
+    int num1, num2;
+
+    // Use sscanf to extract the integers
+    if (sscanf(input, "mul(%d,%d)", &num1, &num2) == 2) {
+        // If the format matches and two integers are extracted, print them
+        printf("Extracted numbers: %d and %d\n", num1, num2);
+        printf("Their product is: %d\n", num1 * num2);
+    } else {
+        // If the format doesn't match, print an error
+        printf("Failed to extract numbers from the string.\n");
+    }
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: Extracted numbers: 3 and 7
+: Their product is: 21
+
+#+begin_src C :results output
+#include <stdio.h>
+
+int main() {
+    int num1, num2;
+    int result = sscanf("123,456", "%d,%d", &num1, &num2);
+    printf("Result: %d\n", result); // Output: 2
+}
+#+end_src
+
+#+RESULTS:
+: Result: 2
+
+Anyway now we sum up the products:
+
+#+begin_src C :results output
+#include <stdio.h>
+#include <stdlib.h>
+#include <regex.h>
+#include <string.h>
+
+int main() {
+    const char *input = "xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))";
+    const char *pattern = "mul\\([0-9]+,[0-9]+\\)";
+    regex_t regex;
+    regmatch_t match;
+    int reti;
+
+    // Compile the regex
+    reti = regcomp(&regex, pattern, REG_EXTENDED);
+    if (reti) {
+        fprintf(stderr, "Could not compile regex\n");
+        return 1;
+    }
+
+    // Allocate memory for an array of substrings
+    size_t match_capacity = 10; // Initial capacity for matches
+    size_t match_count = 0;
+    char **matches = malloc(match_capacity * sizeof(char *));
+    if (!matches) {
+        fprintf(stderr, "Memory allocation failed\n");
+        regfree(&regex);
+        return 1;
+    }
+
+    // Search the input string for matches
+    const char *cursor = input;
+    while (!regexec(&regex, cursor, 1, &match, 0)) {
+        // Extract the match
+        int start = match.rm_so;
+        int end = match.rm_eo;
+        int match_length = end - start;
+
+        // Dynamically grow the array if needed
+        if (match_count >= match_capacity) {
+            match_capacity *= 2;
+            char **new_matches = realloc(matches, match_capacity * sizeof(char *));
+            if (!new_matches) {
+                fprintf(stderr, "Memory reallocation failed\n");
+                for (size_t i = 0; i < match_count; i++) {
+                    free(matches[i]);
+                }
+                free(matches);
+                regfree(&regex);
+                return 1;
+            }
+            matches = new_matches;
+        }
+
+        // Allocate memory for the current match and copy it
+        matches[match_count] = malloc(match_length + 1);
+        if (!matches[match_count]) {
+            fprintf(stderr, "Memory allocation failed for match\n");
+            for (size_t i = 0; i < match_count; i++) {
+                free(matches[i]);
+            }
+            free(matches);
+            regfree(&regex);
+            return 1;
+        }
+        strncpy(matches[match_count], cursor + start, match_length);
+        matches[match_count][match_length] = '\0'; // Null-terminate the string
+        match_count++;
+
+        // Move the cursor forward
+        cursor += end;
+    }
+
+    // Process each match
+    printf("Results:\n");
+    int sum = 0;
+    for (size_t i = 0; i < match_count; i++) {
+        int num1, num2;
+
+        // Extract the two integers from the substring
+        if (sscanf(matches[i], "mul(%d,%d)", &num1, &num2) == 2) {
+            // Multiply the two integers
+            int result = num1 * num2;
+            sum += result;
+            printf("%s -> %d\n", matches[i], result);
+        } else {
+            printf("Failed to extract integers from: %s\n", matches[i]);
+        }
+
+        free(matches[i]); // Free each match after processing
+    }
+    free(matches); // Free the array of pointers
+
+    // Free the compiled regex
+    regfree(&regex);
+    printf("%d", sum);
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: Results:
+: mul(2,4) -> 8
+: mul(5,5) -> 25
+: mul(11,8) -> 88
+: mul(8,5) -> 40
+: 161
+
+#+begin_src elisp
+(+ 8 25 88 40)
+#+end_src
+
+#+RESULTS:
+: 161
+
+Ok, so that worked.
+
+Now we have to test it with more complex input.
+
+#+begin_src C :results output
+#include <stdio.h>
+#include <stdlib.h>
+#include <regex.h>
+#include <string.h>
+
+int main() {
+    const char *input = "@why(692,996)[&}}^where(81,407)mul(247,89):[&[{<mul(980,958),?mul(529,895)!<#~!$&~when()+mul(519,986)what())#mul(710,934)%??*'!<mul(813,338)! +$what()<don't(){^mul(396,693)mul(337,541)}what()*<](@?~mul(64,644)[where()who()~,))mul(528,450)!' -do()who()#]where():(mul(909,368)mul(259,743)''when()^?from()]select()#;mul(227,252)<mul(118,202)-&!(when(806,911)~]who(58,451)- mul(135,37);mul(75,773)?~when()where()]mul(93,321)where(),where()!when(769,449)where(616,323)@&mul(489,237)&;do()<mul(803,622)mul(616,264)!from()why()~@],@from()mul(499,593)#<?/&(when()':mul(237,54)&-],+mul(856,447)})select()mul(540,283)don't()'@how()@mul(701,900)?!['mul(958,898)mul(403,891)+*why()&-)mul(877,695)where()&}{<when()]:[(mul(70,638)<who()[mul(219,485)[why()+% +what()*who()>do())[when()![mul(681,521)when(130,722)@ ->)<,mul(658,134)what()who()}+}@/mul(458,625)when()}&mul(390,728)don't()?)(;mul(196,925);&*#&select()'$mul(57,17)~/#,?&/mul(470,374), do()%@mul(328,216) >what()]when()mul(788,804)mul(873,961)who()^&{>when()why()mul(246,793)~)why()& '>?mul(200,670)[what()~/how()why()#)mul(914,790)>mul(296,84)$>)  mul(176,130);from()from()mul(373,460)from()*>@/when()don't()'select()>when()</@#+mul(529,694){{what()why();#mul(827,797)when()why()><(<&'mul(549,679)from()]##(#mul(149,690)^:}[$!&<* mul(340,101)who()@who(829,301)@do()mul(663,477)who()~<~:+why()what()mul(675,2)select()from(264,335)'-mul(706,937)^who(),~mul(159,226)+&@;mul(432,401),^],^]]mul(481,229)who()^+?how()who()+mul(785,889)mul(353,752)# ]mul(194,854){>from()(<:(mul(796,423)#+$why()]mul(230,206)(mul(339,962){why():%'select()/^~mul(346,831)from()#{/where()]what()mul(489,415)how()!how();select()  mul(313,553)(from();?&@mul(276,256)'$mul(84,330)/{,;mul(540,534)(^]what(648,915){+-:}how()mul(979,837)who()@{mul(766,495)who()/'+/*<mul(587,194)/how()mul(516,226)',+from()?what()>don't()@why(){<!]who()&mul(365,928)from()what()what()@why(607,617) {mul(407+#what()+mul(516,503)@&>}who()do()[<'-who())+;mul(552,743)-}&<%%!mul(680,379)'?%(;))mul(713,945)mul(344,235)]<who()[~[('mul(688,707)]?&where()'@mul(508,935)how()]where()select()do()!%]:mul(498,637)'how()& (mul(32,268)~from()from()where()/-@[*who()do()$mul(475,443^% @why()!what()mul(357,992)['mul(926,286){mul(355,744)}mul(410,461);(!:mul(133,384)from()')what()$mul(538,201)mul(336,633)select()why()>^,&%!mul(462,965)where()select()^]when()*from()<#mul(801,899)?why()?,select(){mul(163,717)mul(309,666)!?mul(244,557)[(:mul(590,151):when()from()why()mul(734,459)#[from()@mul(599,980)when(){where()&,^who()>^select()mul(832,947)@-mul(986,539)mul(355,307)-#+mul(854,733)[/({how()*^mul(696,97))+++##what()mul(880,393);??how(958,390)when()(select()^:who()mul(184,872)why() [mul(180,329)what() don't()]~/from():[<>-(mul(330,122)]don't()^*}[from()mul(147,831)-where(486,652):#who()/mul(274,754)why()+;$]#,[mul(703,607)[<]&;&&@mul(277,256),mul(106,665)>$~when()^;mul(914,586)why()$mul(383,297)when()when()select(85,106)select()!$;mul(566,651) mul(928,762)mul(302,399))( !)<mul(926,250))(mul(842,947)}from()mul(53,294)&mul(784,942)mul(614,108))[from()&,;mul(67,626)%-[mul(516,770)/<?}#$;({from()mul(77,888)how()what(){@/mul(392,76)how()^when()[<'where(){mul(357,569)$mul(866,257)^?what())*-who(87,183)<mul(371,728){'what()!+mul(359,893)!;who()^{)%where()/%mul(350,660)/from()select()%^+)@when()mul(331,754)} * )(mul(98,91)[/*from()?-do()^:,when())when()$~who()mul(457,779)mul(825,607)(from()from()<mul(888,364)#how(){(<})what()[mul(356,842);>-{[%;:$}mul(973,195)* #$from()who()/mul(383,305):]~}+'^what(92,64)mul(360,235who();mul(186,635)[}?,/why()#what()&select()mul(249,256)&/ mul(851,885)?:mul(797@,mul(87,662)what(309,502)$#}-mul(144,693),</from(621,475);who()+-;mul(489,471)select()where(){mul(101,882)mul(399,691) -:mul(203-how()from()when()(}'!from()>mul(148,850)*mul(781,765)select()do()?> @*mul(262^who()[&!mul(557,94)select()don't()'from()mul(850,693)mul(589,25)<select()(who()* @(]?mul(389,321)~mul(403,382)what()*,)who()when()mul(994,907)$mul(510,490)&where()mul(758+({mul(221,746)where()^!select()$mul(950,866)when(),$}how()do())<how(): ~^mul(978,411)[@how()how() mul(133,168)what()who()when()$@[(@{>mul ?;&why(),mul(285,937)mul(138,969)[/~[mul(580,479)~~^^-mul(880,273)])select()(%[select()why()mul(693,345)()why()!mul(113,820)(?%  mul(362,763);when()mul(321,344)~^){{#how()who() mul(850,506)?;][~@'<when()mul(594,30);>[mul(806,297)# ) @]when()mul(697,524)&[<--+mul(830,463)mul(172,696>how())?mul(52,131)select()how()<mul(939,710)  ~how())?mul(429,147)[-?&}what()}@+~mul(87,386)>^{:%[mul(472,843)<who(579,643)<~,**mul(749,472){from()^?who(46,513)}>who()mul(921,645)+^&how()how()(why()?*~mul(291,7)?+when()$+$&:{~mul(484,416)!+;-+mul(433,280)*!mul(442,92)where()why()where()'):how()}^don't()from(){where()how()>mul(163,420)^do()#select();'-&why(13,360)>mul(156,867)who()]how()?<mul(645,208)(mul*select()>how(129,950)+-!where()'mul(883,613)where(436,425)mul(878,282)from()from()]~?select()&{:!mul(329,320):-<?why()>@what()^mul(335,177)$#],^/select()&&from()mul(119,515)^+?~%who():!#mul(620,743):!who()/:@*$/{mul(708what(),-<{who()$what()':how(573,320)mul(85,259)why()who()#-mul(869,677)}]*{mul(6,929)- <mul(613,450),:?*/)#>mul(729,549)}]^,mul(6,598) who()^][mul(104,228);-!mul(28,630){>#what()%}{how()>#mul(827,504)-mul(613,193)who(140,26)[%?select()!]mul(707,956))#]@-:when()@<mul(391,848)?where(361,233)/%;>]who()mul(716,823)mul(619,201)when();:$>,^mul; what(535,875)[<!who(){how()how()mul(484,775)when()who()+~[',mul(611,484);/!who()*how()from()mul(475,311)/{how()^when(428,781)mul(783,439)mul(474,38)mul(188,9)]who()when(192,361)when()how()mul(297,838[{+who() }))select()-how()mul(363,38)+when()~how()[>mul(19,577)(select()* /*where()/?mul(922,251)why():!what()mul(555,531)!&(*{why()-*mul(997,855)mul(301,699)'[@when(32,211)@mul(544,929)/select()from()'select():mul@^[*#who()'~select()<mul(639,724):#;what()how()/when()mul(391,707)+ ^why()&when()$select()~%mul(822#$from()/;<#what(200,13)(@@mul(787,474)&+where()mul(161,733)!~why()where()mul(730,677)#}]<-:??mul(674,45)?[select()'/;{;>#mul:from(){@''how()}$+[mul(823,4)mul(21,959)*!where(214,815)({>^mul(630,855)<(select()&mul(92,744)where()+from()?#/where(108,36)-mul(636,727)from()@how()@when()/:%how()mul(722,483)*:where()[do()select()*[<;~+$mul(916,381 select()%when()$@mul(782,526)how()select()@&@!/mul(568,269)+~%<(}>how()&mul(568,865)?}(*^-!mul(781,583)* (:^mul(815,903)(:who()what()select():who()^how()(mul(468,302)where()%mul(940,777):<<[#+,mul(185,55)mul(470,850), '-' mul(361,647)mul(629,265)![;mul(259,739)mul(209,270)+where()~#mul(340,946)!how()?]don't()mul(137,227)don't()why() how()}}>~&mul(761,163)]<#@mul-+how()select()mul(228,162),from(164,406)$what()>don't())who()]when()how()-why()!mul(236,693)who()<;how()who(): !:'mul(153,600)]what()#from()mul(687,964)^+{ (mul(277,968)'&don't()>%what()(]&/}mul(951,592)}+<don't()-[when()who()&+when()&mul(945,705)&^{:mul(517,673)from()+[['from()mul(123,745))mul(735,471)#who()!-mul(218,491)how() ]what()<mul(775,865)[%who()$#+mul(836,889)where()&how()why()![mul(557,141)mul(565,994)&from(){}*%(:do()'}>mul(675,946),where()mul(316,184)]<'[<*why()*select(597,725)/mul(58,34)/when();:how());mul(60,439)<?from()>who()from()}mul(300,852)mul(278,762)?</}!%mul(461,331how()!%>:}@<why()<mul(961,437)+~)[mul(340,101)!;'from())why()^,!mul(485,861#[/mul(710,417)%' -$&where())what()*mul(91,947)}(don't()select()-<why()(who()[};mul(294,617)who()$;how(){mul(540,968)mul(653,727)who(608,146)!mul(525,266){where()%select()where())(:*mul(503,274),how(35,5)mul(26;:;{ [mul(940,877)%*[@'@({do()>?&]mul(46,664)mul(291,306))-{(>mul(332,272)~,how()-mul(800,174)@%how()-where(171,403)mul-( mul(758,259)>what()what()+what()who()why()+@mul(945)&when()]mul(197,968)(?]#!where(876,487)-mul(409,744) /what()](what()mul(228,485)(!select(){(mul(898,295)}why()^<how()(who(233,695)%mul(808,397)^who():mul(871,11)>)?mul(189,119)&mul(564,374))-,:[>mul(866,802)@(++why()/!mul(800,861)mul(657,743)who();* ?mul(785,52){/!when()select(550,561)&(/+*mul(407,66)who()^&mul(455,769)<mul(998,994)'mul(306,933)mul(603,638)why()&mul(262,761)where()?^}mul(631,682)how(483,667)why(490,860)}}~ 'when()>mul(608,695)select()how()#[what()select()^(:mul(559,247)*-mul(684,443)< :)*mul(390,946)how()/,mul(207,219)'''when()^mul(452,554)+<%,%mul(744,656)@~>from(),&!mul(851,699)when(),::%what()do()@/mul(304,149)}/why()$#-,*!what()mul(337,566)&who(109,924)where()*mul(223,512)'; }mul(98,573)do()[[{$/*<]mul<how()where()'mul(819,187),&'(}@how()$what()?mul(348,685)where();how(628,764):!!~mul(930,521)(what(829,497)':}:;;)mul(740,633)mul(679,522)*(<<-(mul(144,935)+*+!mul(216,40)]@(do()mul(912,141)why()from(964,599) where()mul(336,700)mul(865,243)%**how()' when()<[when()mul(349,355)]mul(749,166)%>(,*mul(953,484)]who()select() :}how()!%don't()where() !;mul(533,762)-$-+what(124,118)mul(326,999)where()&($what()(mul(796,908) )<~~ mul(127,960))~%/who()]do()&#-&#mul(367,46)>where():;# %[]&mul(547,568)#^[from(883,557)mul}#!/usr/bin/perl)#-mul(547,116)$^when()mul(370,569)<->from()*>}?^don't()<>:,where()why()mul(449,470)?when()%+^-{/mul(184,484)from(214,259)'mul(959,719)select()how(606,892)-;mul(106,758)where()select(562,544)$#/%mul(675from()~%}mul(732,953):}<mul(869,791): *~mul(344,486)&%*mul(446+mul(409,699)how(652,866);((~who()(mul(507,268)[>,?-^mul(504,99))[:~!]what()mul(204,85)@^do()>$>{select()%how()select();%mul(551,71)%(,when():)from()when()select()mul(278,290)/ {who();where()$%-mul(843,684)how()'{from()select()mul(607,965) [[/]mul(876,854)#where()where()![}%mul(62,79)from()where()(]+select()]]mul(668,758)>select()what()[who()where()[&!mul(551,543)<from()what()%[[do()?how()});:''}mul(598,746)mul(462@(mul(565,27)who()when()mul(650,760)<{$<:@&select()mul(337,243)~&,(+mul(483,254)what()from()'mul+]::?what()@?$>#mul(924,697)*+<do()!!$,mul(70,420)what()mul(170,21),who()]mul(916,819where()'($#]%from(27,77)/[>mul(807,301)*where(381,893)}where()(+mul(846,431)from()why() %what()why(802,698)?mul(122,673)!:}mul(672,150)~?mul(567,146)?who()&@/*&mul(922,901)]when()>$~{>mul(271,971):)select()who(91,572)~$why(),mul(695,885)where()'#from()from()mul(252,860)>^:who()({])(mul(233,472)who()where(906,494)where()--mul(347,46)}mul&don't()%who()((}who()((]mul(52,854)where()why(363,933) ?+mul(203,35)<[$*from()},who()'mul(849,519)mul(841,351)]]mul(444,689):from()*!&)*'! mul(943,690)how()^}]why()((mul(935,524)mul(935,806)who()~mul(703,737))]?:/+%when()(do()mul(968,713)[who(561,712)(/mul(97,572)who();~+why()-mul(942,777)))&^[,where()mul%*)?from()mul(462,688)>how()[++(who()~%@mul(940,121)~- {who()-{why()mul(49,417)mul(353,70)what())?<-from()how()/where():don't()select()$(>/[what())::mul(515,851)what())~[don't()?+; mul(302,236~mul(38,849)[[{when(635,431)who()^who()?when()<mul(539,198)(,%#*:&why()*mul(646,12)^&%where()select()#-mul(234,72)>&%]:do()select()',<where()select(180,720)mul(117,684)?who()%mul(840,264)who():{+($mul(649,6)who()+mul(232,471^*mul(788,243)where();{'/select()(mul(900what(528,554)[(+&):mul(390,369)>where()<;-@mul(349,121),*[,<!/^;mul(877,679)?[,when()<^mul(81,108)-*@how()[mul(126,985)from()why();}$:,*mul(361,691)^when()[>! *~what()mul(604,91)how(301,723)what()how(67,829)mul(247,535)~~$<~where() #(mul(949,539)+{'&&({why(),mul(578,991)^!who();@select()how()who()@[mul(746,832)%mul(654,124)mul(637,556)-who(983,938)where()#[don't()mul(707,216)[~$(*select()]-<'mul(580,979))+?mul(439,653)&when()why())who()-#~-mul(748,900)%{^)mul(439,528){){$what()}]why()]mul(842,468where()+when()$mul(740,495)what(216,648)/who()@+what()%mul(206,411)mul(791,423)' what()what();!&})mul(758,695) {where()}mul(896,607)what()^;from()+mul(457,902)$from()#mul(683,733){>mul(209,811)what()#from()@mul(53,51![-*mul(107,114)}&%^mul(578,688)*)<mul(901,341) ,;/mul(16,607)$?[>/]mul(14,783)*#when()@>-mul(494,115)when()mul(655,203), #!-& don't(),}mul(154,778)/)>}*select()@why()-mul(442,92)(mul(596,263)how()#>from()-mul(159,308),mul(369,319)why()do():#^when()~$mul(627,260)##;from()@mul(146,672)~where()~mul(661,627)]&#/+mul(634,624))]}how()what()from()@]*&mul(836,150)%;?-#]&&&)mul(243,782){{~:> <where()mul(420,881) [how()don't()<& %?mul(67,722)#/what():mul(160,274)**from()[,- @)mul(603,336)?from()]'%mul(292,56)$what(){;where(474,989)<{!mul(178,109)mul(799,888) >[%@when()mul(636,74);'who()mul(484,564)from()where()^+@<(&mul(559,305)*?[<),/&-mul(994,131)}%)mul(242,758)~ ;!select()?what()what()how()mul(165,179)/^>*how()/!?mul(178,438)' 'why()mul(726,788)mul(466,85)}mul(32,334)!+:@[&~]mul(796,940)mul(391,854)why()@~who(406,979))(^mul(652,996),mul$who(){mul(390,599)select()/}'-?,})from()mul(496,458){&select()where() ,$,mul(304,108)who()^what(52,141)<>why()/mul(916,266)+who()^'@:;mul(785,513);)<<!)*mul(854,23)mul(137,548)@-!^~mul(764,451)mul(391,768){<]from(388,963)$!/#*mul(617,146)}#what()@/}}when()do()*mul(609,18)@;who()^>!,mul(17,331)what()<]<<^}from()<$mulwhere()#@mul(276,743)how()&mul(89,923)>~where(769,105)!why();who()mul(188,537)when()(who()where():%?)mul(326,794)when()<,select()<~*{/^mul(106,934)%,&<mul(444<{^mul(690,660)#![who()+<why()}+mul(472,89)^+from() +{mul(902,82){mul(148,406)/[when()from()don't()&?@#why()?mul(609,571)^{;select()from()how()*#'*mul(215,633)who()who()#'select()+^why()what()mul(336,910)mul(472,299)from()mul(16,149)/[*mul(902,563)what()%)^^select()mul(514,108)!mul(955,588){how()@!)from()]}what()when()mul(104,512)!select()mul(188,411)who()/${when(15,634)do()<&mul(889,797)~-when()},mul(93,599),select(890,669)why()mul(344,755)*%from())mul(585,747)%mul(398,764)#from()from())/(%^?}mul(581,877)where()*/%mul(170,622 *%<select()mul(538,578)~:+!?([mul(20,539) (select()++don't()'-why()'mul(295,426)where(),$/':[mul(758,121),~mul(238,732)!why(427,957)']~select()(mul(308,145)/:&*don't()what(379,178)mul(188,515)$+@don't(),@where(526,553)!mul(297,406)$!where()mul(402,859)how(){<!]<~mul(488,557)mul(570,433)>>mul(435,196)where()@?^-%>select()mul(4?%/:>mul(579,464)+#when()}}$'!mul(997,496)*mul(307,914){why():how()[what()<?,don't()mul(170,862)when()~$;#why()+how()mul(377,975)-$~%-what()*}$mul(994,691)<-!'~*mul(160,609)>''>,why()when()$[{mul(145,574)?>mul(789,315)!,)+mul(266,109)select()!mul(885,712))^^&mul(610,195)!*who()mul(892,578)+*where() ]+what()select()^/mul(560,601)@'?(<mul(214,365)&how()who()@/where()'mul(840,310)why()^>)!::!<mul(475,358)?[#mul(197,145)$<what()where()>why()mul(630,917)*[mul(583,335)#?where())!{+,;what()do():~[&(,[!mul(5,120)from()mul(98,868)? {!mul(555,65)?~^when()where()mul(451,352)%<]from(746,31)mul(141,885)-mul(122,934)#who(636,694){>;@%{from()'mul(690,533)<//]when(),(~@from()mul(472,128)#*[mul(143,30)mul(121,540){what(): do()?mul(704,732)($(select()select()~what()mul(88,529)~;)'><^mul(676,840)}~<-what(421,598)*mul(550,833):){$ %mul(921,637)~(@$@how(193,897),:[mul(711,995)select()mul(107,767){&~mul(351,157)?!mul(188,958)}:mul(781,512)what(961,371)^@mul(148,962)where(270,721)!when(),when()>@what()mul(640,811){++-]/]-/mul(7,244){why()~/select():%:mul(842,953)who()$}who()^)mul(265'how()when()mul(39,60)]%mul(399,85)'/[don't() select())^mul(314,937) ][what()where(){~select()^when()mul(884,888)mul(935,879)%;]!]who()mul(511,968)&mul(529,394)when()mul(779,690)&$~@:from()mul(900,553)@don't()$>-@how()where()(#select()mul(714,939)where(200,556)>/ why()what()>-[!mul(581,4)$why()why();mul(769,428)'who()mul(561,314) {#/<^from()mul(50,184)}#*[how()how(){@'!mul(827,821)::-)}mul(779,557)from()why()where(682,979)%:%>mul(806,900)~&how();$why()mul(554,252)[/#^(from()~[&why()mul(70,686)mul]what()don't()-!mul(698,743)}+# ? *from()%~mul(318,624)^/mul(921,343)/^/select()mul(329,594)<')^(#mul(424,720)-'why()*why()&where()mul(665,924){!-~$don't()}:%(?&from(),#mul(105,692)~/~''how(771,222):>mul(296,616)+%'[??(^mul(790,296) >when()what()mul(271,491),when()-~%*do()what()%)!-'mul(914,243);from()&from()where(349,831)&@mul(360,913)mul(396,166)select()?'when(236,698),%-(select()mul(409,263)>]from()(/mul{where()>!), mul(954,312)>who()where()do(){select() why()mul(317,979)why()^do()mul(132,710)%#}mul )+' $mul(989,387)+:~%>(mul(209,606)what()<)*#:mul(37,222);)!why(756,194)'mul(604,71)?+ +what()$]@don't();+mul(613,127)who()}[how(195,543)select(){-)('mul(879,421]select()mul(380,232);?[%;^>>mul(46,941)#,'where(),mul(149,205)where()^from()&)[who()mul(337,461)why()],how()%don't()]@'from(463,678){mul(59,532)when()mul(517,186)how();when()*do()]'/(,mul(195,769){how()##;!%*)don't()#+mul(449,953)%#who()]+@$;mul(25,123)$^what();don't()<who()where(353,919)(mul(507,127),!why()-)select()mul(877,96)^mul(336,330)*?mul(586,329) {/mul(777,773)/ ?/#when()&mul(623,804)^+,+-mul(551,935),[mul(896,32)} when()(~mul(781,541)](){from()'){mul(265,990):$%+why()) '[(mul(793,705)}why()' %<$(-+mul(779,734)what()who(185,147)when()?where()@mul(615,204) #from(976,635)?mul(430,577)/~>why()why()why()what()mul(631,446);^[[{~! )mul(379,911):why()-why()who()mul(45,209)when()%who()~-[mul(752,243)$who()!}] !mul(624,570)[why()mul(587,283)#>[select()what()mul(581,554)who()from()mul(39,13) <mul(360,384)@-){*<mul(381,140)>*$}-mul(720,140)- /;{-why()mul(989,958)where()^@select(243,837):}mul(87,422)!%when()who()>]mul(285,451)*how()mul(427,132)how(){&;from()]<&mul(670,229)+how(809,912),{who()mul(512,888))^)}*)/mul(83,730)mul(525,735)what()#}who()mul(867,63){^&,})- mul(544,377)%{$mul(870,448)from()select()%&:>^:!how()mul(119,830):*:?+'<['mul(106,75) }when()don't()<> why()mul(447,647):+[^- <mul(918,729):;~:why()[?mul(812,791)what()~>(select()}mul(684,895)why()what()&:mul(656,707)mul(173,797)}select()@]&when():mul(443,217)where()):why()who(),what()!%mul(765,579),%how()select(318,144),<'mul(377,695)from()]&mul(308,501)what()(mul(687,75)&mul(182,18)*how()/:;mul(518,469)where(215,786)]$$+!mul(959,580); from()how()how()%%mul(494,77)what()@]^>@*mul(718,497)where(){where(866,131)who()mul(415,333)})?{mul(467,647)who()who():~{how(945,509)mul(82,421)mul(438,580)!:-[+}when()!mul(583,479)@@why()-why()where()<do()#what()]why()how()mul(297,179)#how()[&}:#select(),mul(111,570)~']why(641,197)what()^mul(923,44)$where():who()^ why()?,";
+    const char *pattern = "mul\\([0-9]+,[0-9]+\\)";
+    regex_t regex;
+    regmatch_t match;
+    int reti;
+
+    // Compile the regex
+    reti = regcomp(&regex, pattern, REG_EXTENDED);
+    if (reti) {
+        fprintf(stderr, "Could not compile regex\n");
+        return 1;
+    }
+
+    // Allocate memory for an array of substrings
+    size_t match_capacity = 10; // Initial capacity for matches
+    size_t match_count = 0;
+    char **matches = malloc(match_capacity * sizeof(char *));
+    if (!matches) {
+        fprintf(stderr, "Memory allocation failed\n");
+        regfree(&regex);
+        return 1;
+    }
+
+    // Search the input string for matches
+    const char *cursor = input;
+    while (!regexec(&regex, cursor, 1, &match, 0)) {
+        // Extract the match
+        int start = match.rm_so;
+        int end = match.rm_eo;
+        int match_length = end - start;
+
+        // Dynamically grow the array if needed
+        if (match_count >= match_capacity) {
+            match_capacity *= 2;
+            char **new_matches = realloc(matches, match_capacity * sizeof(char *));
+            if (!new_matches) {
+                fprintf(stderr, "Memory reallocation failed\n");
+                for (size_t i = 0; i < match_count; i++) {
+                    free(matches[i]);
+                }
+                free(matches);
+                regfree(&regex);
+                return 1;
+            }
+            matches = new_matches;
+        }
+
+        // Allocate memory for the current match and copy it
+        matches[match_count] = malloc(match_length + 1);
+        if (!matches[match_count]) {
+            fprintf(stderr, "Memory allocation failed for match\n");
+            for (size_t i = 0; i < match_count; i++) {
+                free(matches[i]);
+            }
+            free(matches);
+            regfree(&regex);
+            return 1;
+        }
+        strncpy(matches[match_count], cursor + start, match_length);
+        matches[match_count][match_length] = '\0'; // Null-terminate the string
+        match_count++;
+
+        // Move the cursor forward
+        cursor += end;
+    }
+
+    // Process each match
+    printf("Results:\n");
+    int sum = 0;
+    for (size_t i = 0; i < match_count; i++) {
+        int num1, num2;
+
+        // Extract the two integers from the substring
+        if (sscanf(matches[i], "mul(%d,%d)", &num1, &num2) == 2) {
+            // Multiply the two integers
+            int result = num1 * num2;
+            sum += result;
+            //printf("%s -> %d\n", matches[i], result);
+        } else {
+            printf("Failed to extract integers from: %s\n", matches[i]);
+        }
+
+        free(matches[i]); // Free each match after processing
+    }
+    free(matches); // Free the array of pointers
+
+    // Free the compiled regex
+    regfree(&regex);
+    printf("%d", sum);
+    return 0;
+}
+#+end_src
+
+We note that the above would not have been possible at all without ChatGPT (or at least this would have taken me a full day if not a full week to fully grok). So I'm going to use this to simply familiarize myself with the language a bit more. It's clear that I really need to work on some fundamentals here. And I don't otherwise have all the time in the world. But I was able to decompose the problem on my iPad and get the help I needed. I learned a few things, like how C handles regex, and how to use sscanf. I also realized that I don't need do the line by line file input. I can just paste the whole mess into the code itself.
+
+In short, I am humbled. C is a beast. I respect those who know it, and I hope to continue to improve at it.
+** December 4
+Here we [[here ][go]].
+
+It's a word search. This is a test of matrix manipulation. In C. Similar to doing Conway's Game of Life.
+
+Let's break this down into its composite steps.
+- load in the data (we can do this directly)
+- turn it into a 2-D array (we've done this before)
+- figure out how to find xmas horizontally
+  - simpler problem: start with a single line, and see if I can find xmas
+- figure out how to find xmas vertically
+  - simpler problem: start with a single vertical line (should be similar in nature to the first one)
+
+We will give ourselves 40 minutes to do it. We can likely do most of it right here, but we'll take what we've got at the end and throw it into the code.
+
+Sample data is:
+
+MMMSXXMASM
+MSAMXMSMSA
+AMXSXMAAMM
+MSAMASMSMX
+XMASAMXAMM
+XXAMMXXAMA
+SMSMSASXSS
+SAXAMASAAA
+MAMMMXMMMM
+MXMXAXMASX
+
+It's 10 across.
+
+#+begin_src C :results output
+#include <stdio.h>
+
+int main() {
+    char dat[] = "MMMSXXMASMMSAMXMSMSAAMXSXMAAMMMSAMASMSMXXMASAMXAMMXXAMMXXAMASMSMSASXSSSAXAMASAAAMAMMMXMMMMMXMXAXMASX"
+
+    return 0;
+}
+
+#+end_src
+
+#+RESULTS:
+: hello world
+
+Now let's break this down into a 2-D array. We'll do the prototyping here and we'll do the actual code in the colder.
+
+#+begin_src C :results output
+#include <stdio.h>
+
+int main() {
+    char test[] = "ABCDEFGHI";
+
+    char out[3][3]; // first bit is a row, second bit is a column
+    int count = 0;
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            out[i][j] = test[count];
+            count++;
+        }
+    }
+
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            printf("%c", out[i][j]);
+        }
+        printf("\n");
+    }
+
+    return 0;
+}
+
+#+end_src
+
+#+RESULTS:
+: ABC
+: DEF
+: GHI
+
+Ok, great. Now we have to look for all instances of "be" in the array above. We break it into:
+- look for the number of times a single character appears
+- look for the number of times the word "BE" appears (1)
+- control: look for the number of times the word "AA" appears (0)
+
+#+begin_src C :results output
+#include <stdio.h>
+
+int main() {
+    char test[] = "ABCDEFGHI";
+
+    char out[3][3]; // first bit is a row, second bit is a column
+    int count = 0;
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            out[i][j] = test[count];
+            count++;
+        }
+    }
+
+    // look for the number of times a single character appears
+    int times = 0;
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            if (out[i][j] == 'B') {
+                times++;
+            }
+        }
+    }
+    printf("%d", times);
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: 1
+
+And now for the two character instance. This can be broken into:
+- horizontal
+- vertical
+- diagonal
+
+We note that we have to reverse the strings too, given that it can show up backwards. Now the meat of the matter is going to be some sort of string function. So we can simplify the problem and go with a single string.
+
+#+begin_src C :results output
+#include <stdio.h>
+#include <string.h>
+
+int main() {
+    char test[] = "ADIGKDTHENGJSOEHTDTHE";
+    char word[] = "THEN";
+
+
+    // we can slide it along the array, forwards
+    int test_length = sizeof(test)/sizeof(test[0]) - 1;
+    int word_length = sizeof(word)/sizeof(word[0]) - 1;
+
+    char slice[word_length];
+    int instances = 0;
+    for (int i = 0; i < test_length - word_length + 1; i++) {
+        // populate the slice
+        for (int j = 0; j < word_length; j++) {
+            slice[j] = test[i + j];
+        }
+
+        // check if each element is equal
+        // could not get memcpy to work due to null terminator in word[]
+        int count = 0;
+        for (int j = 0; j < word_length; j++) {
+            if (slice[j] == word[j]) {
+                count++;
+            }
+        }
+        if (count == word_length) {
+            instances++;
+        }
+    }
+
+    printf("%d", instances);
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: 1
+
+So we appear to have gotten that piece. This gives us horizontal and vertical, provided we can reverse the string. What we would need to do from here:
+- determine how to reverse a string
+- turn the above into a function
+  - figure out how to make functions, with the proper use of pointers and malloc
+    - figure out if we need to store the result on the heap
+  - determine whether you're going to include the reversal of the string
+- determine how to loop through the rows and the columns to check all that
+- determine how to turn each of the diagnols into a string itself, and use the same logic above on this when you've got it
+** December 5
+*** planning
+We might not even do the challenge today but we would like to decompose it at least so we can see what we need to do. We have to wait a few minutes because we realize that it's not there yet.
+
+Given the following rule set and page numbers:
+
+47|53
+97|13
+97|61
+97|47
+75|29
+61|13
+75|53
+29|13
+97|29
+53|29
+61|53
+97|53
+61|29
+47|13
+75|47
+97|75
+47|61
+75|61
+47|29
+75|13
+53|13
+
+75,47,61,53,29
+97,61,53,29,13
+75,29,13
+75,97,47,61,53
+61,13,29
+97,13,75,29,47
+
+Do the following:
+- determine which of the following are in the correct order
+- find the middle number of each correct order number
+- print out the whole thing
+
+Let's start with the correct order thing: we have:
+- determine how to turn the rule set into actual code that gives you these rules
+  - brainstorm different options
+  - execute
+
+Different ways we can turn
+- X|Y into: if X and Y are in the same list, then X must be before Y
+
+So then what we do:
+- write the code for a single instance of the rule
+- write a function to make this rule exist for any given X|Y
+
+With the first bit:
+#+begin_src C :results output
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int main() {
+    char input[] = "75,47,61,53,29";
+    int numbers[10];
+    int count = 0;
+
+    // convert array of strings into integers split on comma
+    char *token = strtok(input, ",");
+    while (token != NULL) {
+        numbers[count++] = atoi(token);
+        token = strtok(NULL, ",");
+    }
+
+    // print check
+    for (int i = 0; i < count; i++) {
+        //printf("%d\n", numbers[i]);
+    }
+
+    // code in the rule 75|53 (does not exist in rule set)
+    char rule[] = "75|53";
+
+    // tokenize as before
+    int rule_nums[2];
+    token = strtok(rule, "|");
+    int count2 = 0;
+    while (token != NULL) {
+        rule_nums[count2++] = atoi(token);
+        token = strtok(NULL, "|");
+    }
+
+    // print the elements of rule
+    printf("%d\n", rule_nums[0]);
+    printf("%d\n", rule_nums[1]);
+
+    // check the rule. found will equal 2 if the rule is satisfied
+    int found = 0;
+    for (int i = 0; i < count; i++) {
+        if (numbers[i] == rule_nums[0] || numbers[i] == rule_nums[1]) {
+            found++;
+        }
+    }
+
+    printf("%d\n", found);
+
+    // check if 75 does in fact come before 53
+    if (found == 2) {
+        // report the middle number of the array
+        printf("%d\n", numbers[count/2]);
+    }
+
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: 75
+: 53
+: 2
+: 61
+
+Ok, so we did it. Cool little bit with integer division.
+
+Now in order to scale this up to a number of rule sets, we would have to finally get comfortable with functions in C. That's what we're going to do next.
+
+#+begin_src C :results output
+#include <stdio.h>
+
+int add(int num1, int num2) {
+    return(num1 + num2);
+}
+
+int main() {
+    int a = 3;
+    int b = 2;
+    int result = add(a, b);
+    printf("%d", result);
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: 5
+
+Now the simplest use of pointers:
+
+#+begin_src C :results output
+#include <stdio.h>
+
+void double_it(int *num) {
+    *num *= 2;
+}
+
+int main() {
+    int a = 5;
+    double_it(&a);
+
+    printf("%d\n", a);
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: 10
+
+And finally we will look at pointers for arrays.
+
+#+begin_src C :results output
+#include <stdio.h>
+
+int get_midpoint(int *arr, int size) {
+    return arr[size/2];
+}
+
+int main() {
+    int nums[] = {2, 4, 6, 8, 10};
+    int size = sizeof(nums)/sizeof(nums[0]);
+
+    int mp = get_midpoint(nums, size);
+    printf("%d", mp);
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: 6
+
+So we learned here that we cannot do use sizeof within a function, so we have to do that calculation prior to, and then pass it directly into the function. That is good to know. Let's spend the end of this printing out the size of various things. And then we're done.
+
+#+begin_src C :results output
+#include <stdio.h>
+
+int main() {
+    printf("%lu\n", sizeof(int));
+    printf("%lu\n", sizeof(int*));
+    printf("%lu\n", sizeof(char));
+    printf("%lu\n", sizeof(double));
+    printf("%lu\n", sizeof(long));
+    printf("%lu\n", sizeof(float));
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: 4
+: 8
+: 1
+: 8
+: 8
+: 4
+
+We note that pointers on my machine are 8 bytes. Which is 64 bits. Which corresponds to my ARM64 (64 bit) system. If I had a 32 bit system, then the size of the int* would be 32 bits or 4 bytes. That's a cool way to check how many bits I'm dealing with. Make a C script that tells you the sizeof(int*). Will it be 4, or 8?
+** December 6
+*** a quick look
+We don't have very much time today, but we will have a peek.
+
+This is fucking cool. It's karel. We have a map:
+
+....#.....
+.........#
+..........
+..#.......
+.......#..
+..........
+.#..^.....
+........#.
+#.........
+......#...
+
+And the guard moves until there is a #, then turns right and moves again. Each move turns the square into X. The question is how many positions will the guard visit before leaving the mapped area.
+
+So we basically have to create a Karel the Robot thing. First we have the guard positions:
+^>v<. Done. Then we have move() and turn_right(). And a sort of while(front_is_clear) move() thing. And we note that for each of the 4 positions, move is going to mean something different.
+
+So the first step is to turn this input into a 2-D array of strings. We luckily don't have to do any sort of integer conversion or any of that. Then its an exercise of array logic. We can at least do the step of converting this into a 2-D array. We more or less did this yesterday so we can spend 15min on it. The rest is going to be the logic of where is the guard, and what does it do in the next iteration (a while loop that stops when the guard hits the edge). There would be some time to put that together, but we can start with the array.
+
+We have:
+
+#+begin_src C :results output
+#include <stdio.h>
+#include <math.h>
+
+int main() {
+    char input[] = "....#..............#............#..............#.............#..^.............#.#...............#...";
+
+    // assumes the board is a perfect square
+    int input_size = sizeof(input)/sizeof(input[0]) - 1;
+    int side = sqrt(input_size);
+    char board[side][side];
+    int count = 0;
+    for (int i = 0; i < side; i++) {
+        for (int j = 0; j < side; j++) {
+            board[i][j] = input[count];
+            count++;
+        }
+    }
+
+    // print the output to check
+    for (int i = 0; i < side; i++) {
+        for (int j = 0; j < side; j++) {
+            printf("%c", board[i][j]);
+        }
+        printf("\n");
+    }
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+#+begin_example
+....#.....
+.........#
+..........
+..#.......
+.......#..
+..........
+.#..^.....
+........#.
+#.........
+......#...
+#+end_example
+** December 7
+*** part 1
+We [[https://adventofcode.com/2024/day/7][have]]:
+
+190: 10 19
+3267: 81 40 27
+83: 17 5
+156: 15 6
+7290: 6 8 6 15
+161011: 16 10 13
+192: 17 8 14
+21037: 9 7 18 13
+292: 11 6 16 20
+
+Where we have to brute force + and * operators to see if we get a result on the left. So we need:
+- split each line into the int on the left, and the array of ints on the right
+- brute force all possible operators on the right, with all possible values
+- match the outputs of the above to the output on the left and see if you get something
+
+Simple example:
+190: 10 19
+
+10 + 19 = 29
+10 * 29 = 190
+
+for i in (29, 190): if i == 190, return 1, else return 0
+
+Harder example
+292: 11 6 16 20
+
+There are 3 gaps where we can put operators. What we could do is print the strings and conert that into code itself and run.
+
+11 * 6 + 16 * 20, etc.
+
+Where we would have a function that makes the strings, and another one that parses the strings into the relevant operators in real time.
+
+If we do it like that:
+- split 292: 11 6 16 20, into "292" and "11 6 16 20"
+- make a function that adds all possible combos of + and * into the gaps
+- make a function that tokenizes out the numbers using strtok on + or *, loops through the ints and after each int, applies the corresponding operators
+
+We can speed the second and third part up by:
+- making a function that tokenizes "11 6 16 20" on whitespace
+- making a function that produces all possible combinations of + and * that is of size n - 1, where n is the size of the array of ints above
+- run the array of ints through the array of operators in loop to generate the final number
+
+We note that we can start to modularize this a bit more because we learned a bit about function pointers yesterday in C. So this is something that is actually on the table now.
+
+Then how do we do it?
+
+Given:
+{3, 5, 20, 4}
+{"*", "+", "*"}
+
+Run:
+3 * 5 + 20 * 4
+
+#+begin_src C :results output
+#include <stdio.h>
+
+int main() {
+    int nums[] = {3, 5, 20, 4};
+    char ops[] = "*+*";
+
+    int nums_len = sizeof(nums)/sizeof(nums[0]);
+    int result = nums[0];
+    for (int i = 1; i < nums_len; i++) {
+        if (ops[i - 1] == '*') {
+            result *= nums[i];
+        } else if (ops[i - 1] == '+') {
+            result += nums[i];
+        }
+    }
+
+    printf("%d", result);
+
+    return 0;
+}
+
+#+end_src
+
+#+RESULTS:
+: 140
+
+#+begin_src elisp
+(* 4 (+ 20 (* 3 5)))
+#+end_src
+
+#+RESULTS:
+: 140
+
+So it looks like that works. Now can we generate all possible combinations of two elements? In C, this might require malloc and that kind of thing.
+
+Given that we just have + and *, we need to generate strings of some length. But we know what the length is going to be.
+
+This is a binary problem. Basically its how many possible binary strings of size 3. We can do this by counting up in binary from 000 to 111. Then we replace the 0 and 1 with * and +. That gives us the whole thing.
+
+Oooo this is fun. We need:
+- given a number:
+- count upward in binary to that number
+- place each bit into an array
+- convert these bits into * and +
+
+The first thing we need to do in this regard is to be able to convert an int into a binary string. We do this below.
+
+We note that the thing is reversed for our own sake, but for the sake of the problem, we actually do not need to reverse the array, given that we just care about the combinatorics.
+
+#+begin_src C :results output
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+char *count_bin(int num) {
+    char *bin = (char *)malloc(32);
+    int index = 0;
+
+    // build the string
+    while (num != 0) {
+        bin[index++] = (num % 2) + '0';
+        num /= 2;
+    }
+
+    // reverse the string
+    for (int i = 0, j = index - 1; i < j; i++, j--) {
+        char tmp = bin[i]; // store the early element of the array
+        bin[i] = bin[j]; // set the early element to the late element
+        bin[j] = tmp; // set the late element to the early element
+    }
+
+    return bin;
+}
+
+int main() {
+    // determine size of array
+    int num_ops = 12;
+
+    char *bin_count[num_ops];
+    for (int i = 0; i < num_ops; i++) {
+        bin_count[i] = count_bin(i);
+    }
+
+    // print and free
+    for (int i = 0; i < num_ops; i++) {
+        printf("%s\n", bin_count[i]);
+        free(bin_count[i]);
+    }
+
+    // count upward in binary, filling the array accordingly
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+1
+10
+11
+100
+101
+110
+111
+1000
+1001
+1010
+1011
+#+end_example
+
+And from here we can set 1 to be * and 0 to be +. That allos us to combine the two blocks of code together. Like this:
+
+#+begin_src C :results output
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+char *count_bin(int num, int size) {
+    char *bin = (char *)malloc(size + 1);
+    int index = 0;
+
+    // build the string
+    while (num != 0) {
+        bin[index++] = (num % 2) + '0';
+        num /= 2;
+    }
+
+    while (index < size) {
+        bin[index++] = '0';
+    }
+
+    bin[index] = '\0';
+
+    // reverse the string
+    for (int i = 0, j = index - 1; i < j; i++, j--) {
+        char tmp = bin[i]; // store the early element of the array
+        bin[i] = bin[j]; // set the early element to the late element
+        bin[j] = tmp; // set the late element to the early element
+    }
+
+    return bin;
+}
+
+int main() {
+    // determine size of array
+    int nums[] = {3, 5, 20, 4, 10};
+    int num_size = sizeof(nums)/sizeof(nums[0]);
+    int num_ops = num_size - 1;
+    int bin_size = 1 << num_ops;
+
+    // make the binary count
+    char *bin_count[bin_size];
+
+    for (int i = 0; i < bin_size; i++) {
+        bin_count[i] = count_bin(i, num_ops);
+    }
+
+    // loop through the binary strings, called ops
+    for (int i = 0; i < bin_size; i++) {
+        int result = nums[0];
+        char *ops = bin_count[i];
+
+        for (int j = 1; j < num_size; j++) {
+            if (ops[j - 1] == '0') {
+                result *= nums[j];
+            } else if (ops[j - 1] == '1') {
+                result += nums[j];
+            }
+        }
+
+        printf("%d is the result of %s operations\n", result, ops);
+    }
+
+    // free allocated memory
+    for (int i = 0; i < bin_size; i++) {
+        free(bin_count[i]);
+    }
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+#+begin_example
+12000 is the result of 0000 operations
+1210 is the result of 0001 operations
+3040 is the result of 0010 operations
+314 is the result of 0011 operations
+1400 is the result of 0100 operations
+150 is the result of 0101 operations
+390 is the result of 0110 operations
+49 is the result of 0111 operations
+6400 is the result of 1000 operations
+650 is the result of 1001 operations
+1640 is the result of 1010 operations
+174 is the result of 1011 operations
+1120 is the result of 1100 operations
+122 is the result of 1101 operations
+320 is the result of 1110 operations
+42 is the result of 1111 operations
+#+end_example
+
+Checking the shift operator:
+
+#+begin_src C :results output
+#include <stdio.h>
+
+int main() {
+    printf("%d", 1 << 2);
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: 4
+
+1 << 2 makes you from 001 to 100, which is 4, which is 2^2.
+
+Anyway now we pretty much have the algorithm for one instance of the thing. We can from this point loop that monstrosity through an array of characters and check it against the thing on the left. That's just a strtok exercise.
+
+But for the most part we got at the guts of the problem, so far.
+
+Let's do that last part. The strtok splitting:
+
+#+begin_src C :results output
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+
+int main() {
+    char str[] = "3267: 81 40 27";
+
+    char *token = strtok(str, " ");
+    int str_len = sizeof(str)/sizeof(str[0]);
+    int numbers[str_len];
+    int count = 0;
+    while (token != NULL) {
+        numbers[count++] = atoi(token);
+        token = strtok(NULL, " ");
+    }
+
+    for (int i = 0; i < count; i++) {
+        printf("%d\n", numbers2[i]);
+    }
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+
+And now let's combine it with the previous thing.
+
+#+begin_src C :results output
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+char *count_bin(int num, int size) {
+    char *bin = (char *)malloc(size + 1);
+    int index = 0;
+
+    // build the string
+    while (num != 0) {
+        bin[index++] = (num % 2) + '0';
+        num /= 2;
+    }
+
+    while (index < size) {
+        bin[index++] = '0';
+    }
+
+    bin[index] = '\0';
+
+    // reverse the string
+    for (int i = 0, j = index - 1; i < j; i++, j--) {
+        char tmp = bin[i]; // store the early element of the array
+        bin[i] = bin[j]; // set the early element to the late element
+        bin[j] = tmp; // set the late element to the early element
+    }
+
+    return bin;
+}
+
+
+int main() {
+    char str[] = "3267: 81 40 27";
+
+    char *token = strtok(str, " ");
+    int str_len = sizeof(str)/sizeof(str[0]);
+    int nums[str_len];
+    int count = 0;
+    while (token != NULL) {
+        nums[count++] = atoi(token);
+        token = strtok(NULL, " ");
+    }
+
+    // determine size of array
+    int result_check = nums[0];
+
+    // get rid of 0th element
+    for (int i = 0; i < count; i++) {
+        nums[i] = nums[i + 1];
+    }
+
+    // note that the array is larger than this, but we are only using the first specified elements. to trim the array we would use malloc
+
+    // reduce the size of the array
+
+    int num_size = count - 1; // dev
+    int num_ops = num_size - 1;
+    int bin_size = 1 << num_ops;
+
+    // make the binary count
+    char *bin_count[bin_size];
+
+    for (int i = 0; i < bin_size; i++) {
+        bin_count[i] = count_bin(i, num_ops);
+    }
+
+    // loop through the binary strings, called ops
+    int match = 0;
+    for (int i = 0; i < bin_size; i++) {
+        int result = nums[0];
+        char *ops = bin_count[i];
+
+        for (int j = 1; j < num_size; j++) {
+            if (ops[j - 1] == '0') {
+                result *= nums[j];
+            } else if (ops[j - 1] == '1') {
+                result += nums[j];
+            }
+        }
+
+        printf("%d is the result of %s operations\n", result, ops);
+
+        if (result == result_check) {
+            match = 1;
+        }
+    }
+
+    printf("match has been set to %d", match);
+
+    // free allocated memory
+    for (int i = 0; i < bin_size; i++) {
+        free(bin_count[i]);
+    }
+
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: 87480 is the result of 00 operations
+: 3267 is the result of 01 operations
+: 3267 is the result of 10 operations
+: 148 is the result of 11 operations
+: match has been set to 1
+
+Ok, now we have something that works, though it is a bit of messy solution. The better way to handle this is with malloc. But we are not quite in a place where we're good with malloc just yet, so we still have to work on it. But if we're going to work with functions, and make this suck less for ourselves, we have to do it like this.
+
+What I'm going to do now is take the above code and set it to be the main code. This is enough starter code that if I wanted to proceed to the full solution I could.
+** December 9
+*** Day 9
+A bit of a hard [[https://adventofcode.com/2024/day/9][one]]. Or at least one with many steps. I think the best thing we can do here is actually work on the karel one. Which is day 6. So let's do this for a minute.
+*** Day 6
+**** picking up where we left off
+Karel the Robot [[https://adventofcode.com/2024/day/6][essentially]].
+
+We have been able to print the board:
+
+#+begin_src C :results output
+#include <stdio.h>
+#include <math.h>
+
+int main() {
+    char input[] = "....#..............#............#..............#.............#..^.............#.#...............#...";
+
+    // assumes the board is a perfect square
+    int input_size = sizeof(input)/sizeof(input[0]) - 1;
+    int side = sqrt(input_size);
+    char board[side][side];
+    int count = 0;
+    for (int i = 0; i < side; i++) {
+        for (int j = 0; j < side; j++) {
+            board[i][j] = input[count];
+            count++;
+        }
+    }
+
+    // print the output to check
+    for (int i = 0; i < side; i++) {
+        for (int j = 0; j < side; j++) {
+            printf("%c", board[i][j]);
+        }
+        printf("\n");
+    }
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+#+begin_example
+....#.....
+.........#
+..........
+..#.......
+.......#..
+..........
+.#..^.....
+........#.
+#.........
+......#...
+#+end_example
+
+We need the following things:
+- move (and put beeper)
+- if guard, turn right
+- indicate whether you've left the place
+**** move
+So let's think about move:
+- find coordinates for where karel is
+  - print the origin
+- move for each of the 4 conditions:
+  - if ^ move up
+  - if > move right
+  - if < move left
+  - if v move down
+***** find the origin
+#+begin_src C :results output
+#include <stdio.h>
+#include <math.h>
+
+int main() {
+    char input[] = "....#..............#............#..............#.............#..^.............#.#...............#...";
+
+    // assumes the board is a perfect square
+    int input_size = sizeof(input)/sizeof(input[0]) - 1;
+    int side = sqrt(input_size);
+    char board[side][side];
+    int count = 0;
+    for (int i = 0; i < side; i++) {
+        for (int j = 0; j < side; j++) {
+            board[i][j] = input[count];
+            count++;
+        }
+    }
+
+    // print the output to check
+    for (int i = 0; i < side; i++) {
+        for (int j = 0; j < side; j++) {
+            if (i == 1 && j == 0) {
+                printf("X");
+            } else {
+                printf("%c", board[i][j]);
+            }
+        }
+        printf("\n");
+    }
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+#+begin_example
+....#.....
+X........#
+..........
+..#.......
+.......#..
+..........
+.#..^.....
+........#.
+#.........
+......#...
+#+end_example
+
+i is vertical, j is horizontal, and the origin is upper left, zero-indexed.
+***** find karel, and make functions
+#+begin_src C :results output
+#include <stdio.h>
+#include <math.h>
+#include <string.h>
+
+// TODO make a typedef struct Position which allows for return (x, y)
+
+void find_karel(int arr_side, char arr[arr_side][arr_side], int *horizontal, int *vertical) {
+    for (int i = 0; i < arr_side; i++) {
+        for (int j = 0; j < arr_side; j++) {
+            if (arr[i][j] == '>' || arr[i][j] == '^' || arr[i][j] == '<' || arr[i][j] == 'v') {
+                ,*vertical = i;
+                ,*horizontal = j;
+            }
+        }
+    }
+}
+
+void print_karel(int arr_side, char arr[arr_side][arr_side]) {
+    for (int i = 0; i < arr_side; i++) {
+        for (int j = 0; j < arr_side; j++) {
+            printf("%c", arr[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+int main() {
+    char input[] = "....#..............#............#..............#.............#..^.............#.#...............#...";
+
+    // assumes the board is a perfect square
+    int input_size = strlen(input);
+    int side = sqrt(input_size);
+    char board[side][side];
+    int count = 0;
+    for (int i = 0; i < side; i++) {
+        for (int j = 0; j < side; j++) {
+            board[i][j] = input[count];
+            count++;
+        }
+    }
+
+    // what to do when you need to return > 1 thing from a function
+    int x;
+    int y;
+    find_karel(side, board, &x, &y);
+
+    printf("Karel is located at %d, %d", x, y);
+
+    printf("\n\n");
+
+    print_karel(side, board);
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Karel is located at 4, 6
+
+....#.....
+.........#
+..........
+..#.......
+.......#..
+..........
+.#..^.....
+........#.
+#.........
+......#...
+#+end_example
+
+Got a bit of work done with functions, and that's nice.
+
+Anyway chatgpt says we can make a typedef struct called Position that would allow us to return the x and the y.
+
+#+begin_src C
+typedef struct {
+    int x;
+    int y;
+} Position;
+
+Position find_karel(int arr_side, char arr[arr_side][arr_side]) {
+    Position pos = {-1, -1}; // Default to invalid position
+    for (int i = 0; i < arr_side; i++) {
+        for (int j = 0; j < arr_side; j++) {
+            if (arr[i][j] == '>' || arr[i][j] == '^' || arr[i][j] == '<' || arr[i][j] == 'v') {
+                pos.x = i;
+                pos.y = j;
+                return pos;
+            }
+        }
+    }
+    return pos;
+}
+#+end_src
+
+So this is something we can add down the line.
+** December 10
+*** day 6, the karel problem
+**** structs
+Let's learn structs. Then we'll build one into the code:
+
+#+begin_src C :results output
+#include <stdio.h>
+
+typedef struct {
+    int x;
+    int y;
+} Pair;
+
+struct Pair2 {
+    int x;
+    int y;
+};
+
+int main() {
+    // using typedef
+    Pair p;
+    p.x = 5;
+    p.y = 4;
+
+    printf("%d\n", p.x);
+    printf("%d\n", p.y);
+
+    // not using typedef, must define struct
+    struct Pair2 p2;
+    p2.x = 15;
+    p2.y = 14;
+
+    printf("%d\n", p2.x);
+    printf("%d\n", p2.y);
+
+    // another way to set the values
+    Pair p3 = {1, 2};
+    printf("%d\n", p3.x);
+    printf("%d\n", p3.y);
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: 5
+: 4
+: 15
+: 14
+: 1
+: 2
+
+Ok, and now we build this into the previous code, like so:
+
+#+begin_src C :results output
+#include <stdio.h>
+#include <math.h>
+#include <string.h>
+
+typedef struct {
+    int x;
+    int y;
+} Position;
+
+// How you get the function to return more than one value: make it a struct
+Position find_karel(int arr_side, char arr[arr_side][arr_side]) {
+    Position pos = {-1, 1};
+    for (int i = 0; i < arr_side; i++) {
+        for (int j = 0; j < arr_side; j++) {
+            if (arr[i][j] == '>' || arr[i][j] == '^' || arr[i][j] == '<' || arr[i][j] == 'v') {
+                pos.x = i;
+                pos.y = j;
+                return pos;
+            }
+        }
+    }
+    return pos;
+}
+
+void print_karel(int arr_side, char arr[arr_side][arr_side]) {
+    for (int i = 0; i < arr_side; i++) {
+        for (int j = 0; j < arr_side; j++) {
+            printf("%c", arr[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+int main() {
+    char input[] = "....#..............#............#..............#.............#..^.............#.#...............#...";
+
+    // assumes the board is a perfect square
+    int input_size = strlen(input);
+    int side = sqrt(input_size);
+    char board[side][side];
+    int count = 0;
+    for (int i = 0; i < side; i++) {
+        for (int j = 0; j < side; j++) {
+            board[i][j] = input[count];
+            count++;
+        }
+    }
+
+    // what to do when you need to return > 1 thing from a function
+    // note that we didn't need malloc
+    Position p = find_karel(side, board);
+
+    printf("Karel is located at %d, %d", p.x, p.y);
+
+    printf("\n\n");
+
+    print_karel(side, board);
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Karel is located at 6, 4
+
+....#.....
+.........#
+..........
+..#.......
+.......#..
+..........
+.#..^.....
+........#.
+#.........
+......#...
+#+end_example
+
+So we added this function in for turn_right:
+
+#+begin_src C
+void turn_right(int arr_side, char arr[arr_side][arr_side]) {
+    Position p = find_karel(arr_side, arr);
+    if (arr[p.x][p.y] == '^') {
+        arr[p.x][p.y] = '>';
+    } else if (arr[p.x][p.y] == '>') {
+        arr[p.x][p.y] = 'v';
+    } else if (arr[p.x][p.y] == 'v') {
+        arr[p.x][p.y] = '<';
+    } else if (arr[p.x][p.y] == '<') {
+        arr[p.x][p.y] = '^';
+    } else {
+        fprintf(stderr, "Karel not found");
+    }
+}
+#+end_src
+
+And now what we have to do is make a function for move, but that can be for the next day.
+** December 11
+*** day 6: karel
+We have to get karel to move, lay down x's where he moves, and also have a "if # in the front, then turn right" function.
+
+So the easiest thing there is we break it into:
+- move
+- recognize #
+- if # turn right
+**** move
+Today we are going to get Karel the Robot to move. This is a very important part of the function. Ready?
+
+We made our move function, and in doing so we realized that my desired coordinates were flipped. To make it so the i/x goes across and the j/y goes down, we had to flip the for loops in building karel.
+
+#+begin_src C
+int input_size = strlen(input);
+int side = sqrt(input_size);
+char board[side][side];
+int count = 0;
+
+    // Makes x-i go across and y-j go down, with the origin at top left
+for (int i = 0; i < side; i++) {
+    for (int j = 0; j < side; j++) {
+        board[j][i] = input[count];
+        count++;
+    }
+}
+#+end_src
+
+And for print_karel:
+
+#+begin_src C
+void print_karel(int arr_side, char arr[arr_side][arr_side]) {
+    for (int i = 0; i < arr_side; i++) {
+        for (int j = 0; j < arr_side; j++) {
+            printf("%c", arr[j][i]); // gives us the coordinate system that we want
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+#+end_src
+
+This got it to work. Now karel is movin' and laying down X's where he goes. This is great.
+**** checking for hashtag
+So how do we check for a hashtag? We could do our standard
+
+while (front_is_clear()) {
+  move()
+}
+
+But that would be a bit annoying. So I think the easier thing would be that Karel checks to see if the front is clear with each move.
+
+What we can do is put it all into a wrapper.
+
+In that regard, we can make a check_front() function that returns whether it was clear or not.
+
+Then we put move, check_front and turn_right into a wrapper or a loop. We note that this loop requires another function: check_outside. We need to check whether we are on the borderland. But this more or less is check_empty.
+
+We'll cross that bridge when we get there.
+
+We can save the block that checks the front function, in case we have to reuse it:
+
+#+begin_src C
+// what to do when you need to return > 1 thing from a function
+Position p = find_karel(side, board);
+printf("Karel is located at %d, %d", p.x, p.y);
+printf("\n");
+print_karel(side, board);
+
+int front_blocked = check_front(side, board);
+printf("%d\n", front_blocked);
+turn_right(side, board);
+turn_right(side, board);
+turn_right(side, board);
+move(side, board);
+move(side, board);
+front_blocked = check_front(side, board);
+printf("%d", front_blocked);
+#+end_src
+
+Ok, so the script works. What we need to do now is:
+- check for when Karel falls off the board
+- count the X's after Karel falls off the board
+
+And once we get this right with the toy input, we need to do this with the actual "game" input, where the quick and dirty way will be to count the dimensions by hand and run the thing.
+
+I wonder what part 2 of the thing is.
+
+Nonetheless, I'm pretty proud of what I was able to do in the past hour.
+** December 12
+*** day 6
+**** setting a boundary condition
+How do we know we are on a boundary, facing out?
+In C, if we move outside of it, we will read off the array.
+What are these conditions:
+x = 0, <
+y = 0, ^
+x = arr_size - 1, >
+y = arr_size - 1, v
+
+Another thing we can do is read off the array, in which case we will likely not encounter a "." or "#."
+
+So the first thing we will do is conduct an experiment where we just let the thing run for a very long time and see what we get.
+
+So there is a hack, in that when Karel reads off the array, he's gone and that's it. The number of X's stay the same from that point on. So the quick and dirty way to do this would be to simply have Karel go, and then count the X's until they peak. Then that's our answer.
+
+We note also that our output:
+
+#+begin_src
+....#...X.
+....XXXXX#
+....X...X.
+..#.X...X.
+..XXXXX#X.
+..X.X.X.X.
+.#XX<XXXX.
+.XXXXXXX#.
+#XXXXXXX..
+......#X..
+#+end_src
+
+Matches the output provided:
+
+#+begin_src
+....#.....
+....XXXXX#
+....X...X.
+..#.X...X.
+..XXXXX#X.
+..X.X.X.X.
+.#XXXXXXX.
+.XXXXXXX#.
+#XXXXXXX..
+......#X..
+#+end_src
+
+So we have the right answer. We just want a way to set up a while loop, such that when Karel hits the 4 boundaries, he stops.
+
+So I think in the loop we have a function called check_boundary. Set it to 0. Then our while loop is while (check_boundary == 0). We technically don't have to do this to solve the problem, but I think its more elegant and requires a bit more brain power to figure out, so we will go with that.
+
+So back to the boundary conditions. There are two easy ones, the zero cases. But then we have the others. Let's make a function that tests the most obvious one. We know that karel exits from the bottom. Thus, it is when y = 9. Let's put that in and get us on the right track.
+
+I'm thinking we add global variables of BOARD_SIZE that gets us the board size we need. But we can do that later. Seems to be best practices...but I'll have to check this myself.
+
+Here's our loop:
+
+#+begin_src C
+int blocked = 0;
+int boundary = 0;
+while (boundary == 0) {
+    blocked = check_front(side, board);
+    boundary = check_boundary(side, board);
+    if (blocked == 1) {
+        turn_right(side, board);
+    }
+    move(side, board);
+    print_karel(side, board);
+}
+#+end_src
+
+And our function:
+
+#+begin_src C
+int check_boundary(int arr_side, char arr[arr_side][arr_side]) {
+    Position p = find_karel(arr_side, arr);
+    if ((arr[p.x][p.y] == '^' && p.y == 0) ||
+        (arr[p.x][p.y] == '>' && p.x == arr_side - 1) ||
+        (arr[p.x][p.y] == 'v' && p.y == arr_side - 1) ||
+        (arr[p.x][p.y] == '<' && p.x == 0)) {
+        return 1;
+    }
+    return 0;
+}
+#+end_src
+
+We note that this should work, and if it doesn't, it is because our coordinate system does not match the mental model of it that we have in our head.
+
+We did the counting of the X's.
+
+We have the grid on the scratch buffer. It is 130 x 130. This is going to be very difficult to import. Furthermore, I do think there are newlines embedded.
+
+We could set up a different import thing. But I think the lowest hanging fruit is we remove the newlines from the input and make it a super long line. We can do this in a separate c script.
+
+We made a text file. I think the lowest hanging fruit actually is to just get the thing to read the file in line by line and make the array. We have already done that before. But actually the other thing we can do is just build a string called input[] by reading in the file.
+
+Let's make the starter code for that and then just snip it into the script:
+
+#+begin_src C :results output
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+int main() {
+    FILE *fptr;
+    fptr = fopen("day_6/input.txt", "r"); // change to match directory
+    if (fptr == NULL) {
+        fprintf(stderr, "Error opening file");
+        return 1;
+    }
+
+    int rows = 130;
+    int cols = 130;
+
+    int size = rows * cols;
+    char *input = malloc(size * sizeof(char));
+    if (input == NULL) {
+        fprintf(stderr, "Memory allocation failed");
+        fclose(fptr);
+        return 1;
+    }
+
+    int count = 0;
+    int ch;
+    while ((ch = fgetc(fptr)) != EOF && count < size) {
+        if (ch != '\n') {
+            input[count++] = (char)ch;
+        }
+    }
+
+    if (count != size) {
+        fprintf(stderr, "Warning: expected %d characters, but read %d\n", size, count);
+    }
+
+    for (int i = 0; i < count; i++) {
+        //printf("%c", input[i]);
+    }
+
+    fclose(fptr);
+    free(input);
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+
+We did it, and we unlocked [[https://adventofcode.com/2024/day/6#part2][part 2]]. If we want to proceed with this one, we're going to have to make two scripts, one with the toy input and one without, given that the one without uses malloc. Or we can put the toy input into a file as well.
+** December 13
+*** Day 6
+**** part 2
+For this one, we have to think in terms of creating cycles in an array. And how many cycles we would create for the whole thing. The lowest hanging fruit is we brute force it.
+
+Here is an example of a cycle:
+
+....#.....
+....+---+#
+....|...|.
+..#.|...|.
+..+-+-+#|.
+..|.|.|.|.
+.#+-^-+-+.
+.+----++#.
+#+----++..
+......#O..
+
+The hacky way of doing this would be to count the number of times a square is traversed, and set some high number: if the square is traversed 100 times, then stop and do the next one.
+
+Where the next one is we set the new obstacle somewhere else.
+
+The other thing we can do that's less sophisticated is just set some very high number in the while loop and say if it doesn't exit after 100k iterations than we're in a cycle. The way that might fail is if there is a sinister cycle in there that is harder than that.
+
+Let's do this. We're going to split the code into two. The final, and the sample. Given that the final involves opening a file, doing malloc, and so forth.
+
+Anyway I bet there is something clever in here about cycles that I just don't fully understand. But whatever. Splitting the code is something we can grab onto.
+
+So we made a new script to handle this stuff, called sample_day6_pt2.c. Problem is we can only get 3 of the 6 cycles, and we don't know why. So the next step is to figure that out. There were a couple things I had to fix, in terms of assumptions I had previously made and mods required to run the program over and over (like resetting the board).
+
+I need to add O's instead of hashtags, so we can look at bit closer, and print out each terminated board.
+
+And here's how I stopped a seg fault:
+
+#+begin_src C
+void karel_action(int arr_side, char arr[arr_side][arr_side]) {
+    int blocked = 0;
+    int boundary = 0;
+    int count = 0;
+    int limit = 1000;
+    while (boundary == 0 && count < limit) {
+        boundary = check_boundary(arr_side, arr);
+
+        if (boundary == 0) {
+            blocked = check_front(arr_side, arr);
+        }
+
+        if (blocked == 1) {
+            turn_right(arr_side, arr);
+        }
+        move(arr_side, arr);
+        count++;
+
+        if (count == limit) {
+            printf("we are in a cycle\n");
+            print_karel(arr_side, arr);
+        }
+    }
+}
+#+end_src
+
+Notice that I have to check_front after I check the boundary, and not before. We note that I think I'm going to need to move everything into the if boundary == 0 condition. But anyway that's it for now.
+** December 15
+*** Day 6
+**** debug the cycle finding
+We're missing three.
+
+There's a fundamental bug in the code that produces 2 karels and a bunch of x's. Like this:
+
+...X......
+...X.....#
+...X......
+..#X......
+...X...#..
+...X......
+.#.X^.....
+...X....#.
+#..X...O..
+..^X..#...
+
+We will figure it out later.
+
+
+In this false positive, we lose a hashtag:
+
+....#.....
+....XXXXX#
+....X...X.
+..#.X...X.
+..XX>XXXXO
+..X.X...X.
+.#XXXXXXX.
+........#.
+#.........
+......#...
+
+We might have to hard code in the hashtag coordinates as an array of positions or something like that.
+
+Ok, we learned how to use memcpy to take care of it. Now we are going to figure out how to run this thing on the whole array and plug in the answer.
+
+The first cycle appears to be at iter 584.
+**** plan
+We have hit some serious issues.
+
+What we ended up doing was making a separate array that recorded only the position and coordinates of where Karel has been. Our print statements reflect this. But what we want to do is say if the orientation of karel is > and the orientation of a prevous karel one move ahead is > then we're in a cycle.
+
+Karel bugs out at:
+
+dir we are in a cycle (means we're in a cycle)
+O...#.....
+....X>...#
+....X.....
+..#.X.....
+....X..#..
+....X.....
+.#..X.....
+........#.
+#.........
+......#...
+
+..........
+....>>....
+....^.....
+....^.....
+....^.....
+....^.....
+....^.....
+..........
+..........
+..........
+
+For some reason, it gets thrown off by turn right and move. We note that if we obstruct this exact region the turn right and move seems to be the edge cases where it seems to think that the thing ahead of it is another one of itself.
+
+In order to address this, we are basically going to need to test our assumptions around what is expected when. The code right now is a bit of a mess, so it might actually be easier to re-write everything, such that we are building the game board array and the karel history array at the same time and flipping between them across each of the functions.
+
+Either way. We found ourselves stuck in a button mashing loop, thinking that there was just one little thing that we needed to do in order to fix it. We nonetheless found nothing, and we therefore have to basicaly step back.
+
+We can either debug the current code, or we can do a full re-write, and given some of the confusion around the coordinate system that we made, I am leaning toward doing a full re-write. Something that would work with both the sample input and the full input. It would not matter what we put in there. So it would be a single script. No shame in taking the time to do this.
+
+We did some cool work today, but I think there are at least a half to a full day of work (or a week of morning 2-hour blocks) to figure out what the hell is going on. And again, I think its probably best that we do a re-write.
+
+I think we have to get rid of the "trodden" solution that I was going after first. That is just cluttering up the code. Either way, if I were to start all of that right now, it would take me until bed time, and I have a few things that I have to do before then.
+
+So anyway, I am going to stop this now, but is there anything else I am learning today? I think I need to learn how to use lldb (the gdb for apple ARM chips). Or just using debuggers in general and stepping through the code. I think that is something that I could potentially try, just to see how mangled the code is at the moment.
+
+And the other thing is that I think the button mashing loops produce the flow state, which is fine and all, but it is not the right way to do things. I don't want to entrain the flow state on something that is counterproductive, if not completely elementary. I have hit a point where I need a more systematic way of dealing with these issues. Not that we have a few hundred lines of code at worst.
+
+Imagine dealing with some OS code base which is thousands of lines of C code, and imagine that it was written by someone else. What would you do? How would you go about it?
+
+Anyway, that's all for now. I think we need to walk the dog, among other things.
+** December 17
+*** Day 6
+**** debugging
+Today we are going to be systematic. Let's look at the code and make a plan. We remember that today our goal is to be able to use lldb. So let's focus on that. The rest of this is gonna be preparation for Chrissy. Which is in the same mindset. But using a debugger is something that we have not learned yet, so now is the perfect opportunity for it.
+
+There is a tutorial [[https://lldb.llvm.org/use/tutorial.html][here]], and it is associated with the llvm [[https://llvm.org/][project]].
+
+Importantly the sturcture is:
+
+#+begin_src
+<noun> <verb> [-options [option-value]] [argument [argument...]]
+#+end_src
+
+I'm going to use chatgpt to take me through it.
+
+Ok, so we did some basic work on lldb. Let's record what we were able to do, while its fresh in my head.
+
+To run it, we compile with a special flag:
+
+#+begin_src
+gcc -g -o my_program my_program.c
+#+end_src
+
+We note that if we want to not run the optimizations, we do:
+
+#+begin_src
+gcc -g -O0 -o my_program my_program.c
+#+end_src
+
+Failure to use -g will lead to me seeing the assumbly in the debugger and not the C code, which is interesting.
+
+And we note interestingly enough that the -O0 flag changes the characters in my array to things that I can't read. Ascii or some sore of code like that.
+
+Then we want to set a breakpoint at main:
+
+#+begin_src
+b main
+#+end_src
+
+And then at some line below that:
+
+#+begin_src
+b my_program.c:227
+#+end_src
+
+Then we run it:
+
+#+begin_src
+run
+#+end_src
+
+And then we hit our breakpoint and we can print our variables using:
+
+#+begin_src
+v
+#+end_src
+
+And then we can run
+
+#+begin_src
+continue
+#+end_src
+
+To get us to the next breakpoint, or if there are no other breakpoints the program will terminate.
+
+Anyway we went through our code one more time and still don't really know where we are running into the problem, though we think its something to do with turn right. There are still a handful of assumptions that needed to be tested, and that is something we will do the next time.
+** December 18
+*** day 6
+**** debugging
+The problem was the check_front_dir function. What happened was that it would look for Karel in the "karel recording" array where there would be a ton of arrows, and it would simply find the first instance. Find karel only works when there is a single arrow. Thus I had to get the function to take in the original array as well.
+
+#+begin_src C
+int check_front_dir(int arr_side, char arr[arr_side][arr_side], char dir[arr_side][arr_side]) {
+    Position p = find_karel(arr_side, arr); // THIS was the problem...I was originally doing find_karel(arr_side, dir) which does not work as the function is defined
+    if ((dir[p.x][p.y] == '^' && dir[p.x][p.y - 1] == '^') ||
+        (dir[p.x][p.y] == '>' && dir[p.x + 1][p.y] == '>') ||
+        (dir[p.x][p.y] == 'v' && dir[p.x][p.y + 1] == 'v') ||
+        (dir[p.x][p.y] == '<' && dir[p.x - 1][p.y] == '<')) {
+        return 1;
+    }
+    return 0;
+}
+#+end_src
+
+And this produces the expected result.
+**** modifying the original function
+Now we just have to take the changes that we made in the "sample" code and pop them into the original function and see if it doesn't take a million years to fun.
+
+We ran it and got the wrong answer. First thing we need to do is increase reps to 10k not 1k. And we need to get rid of some redundancies. We can keep track of position p without finding karel every time, using pointers. ChatGPT gave us that, but we have a bug where karel is not found. We have to fix by updating p in the function itself. We have to pass the memory address of p into the function and then:
+
+#+begin_src C
+void move(int arr_side, char arr[arr_side][arr_side], Position *p) {
+    if (arr[p->x][p->y] == '^') {
+        arr[p->x][p->y] = 'X';
+        p->y -= 1;  // Update Karel's position
+        arr[p->x][p->y] = '^';
+    } else if (arr[p->x][p->y] == '>') {
+        arr[p->x][p->y] = 'X';
+        p->x += 1;  // Update Karel's position
+        arr[p->x][p->y] = '>';
+    } else if (arr[p->x][p->y] == 'v') {
+        arr[p->x][p->y] = 'X';
+        p->y += 1;  // Update Karel's position
+        arr[p->x][p->y] = 'v';
+    } else if (arr[p->x][p->y] == '<') {
+        arr[p->x][p->y] = 'X';
+        p->x -= 1;  // Update Karel's position
+        arr[p->x][p->y] = '<';
+    } else {
+        fprintf(stderr, "Karel not found in move\n");
+    }
+}
+#+end_src
+
+Notice that with pointers you use the arrows. And notice we're updating the position. We need to update the direction as well, in turn_right. We can do that next as well. But that will be for tomorrow.
+
+Also, we got vterm working in emacs and that's nice. I don't see much difference between that and term, but it seems to be getting the job done.
+
+Anyway in this regard for today ChatGPT is being a good teacher, and good job for solving the bug.
+** December 19
+*** Day 6
+**** fix the pointers
+We did that, and remembered to reinitialize the positions when done. Our answer was 1722. It is reported that the answer is wrong. Too low. There are yet some cycles.
+
+We note that if we increase the limit into the millions, we still get 1722 as an answer. I'm going to guess there is a very large cycle in there. We'll try removing the limit entirely.
+
+If we remove the limit, we hit an infinite loop at iteration 1472. That's useful data. So there is some case there where it is a cycle but I don't pick it up. That is where we will begin debugging.
+
+We need to figure out:
+- i and j
+- print out every move and turn right, and see where it trips up
+** December21
+*** Day 6
+**** fix the cycle problem (spoiler alert: we didn't fix it)
+We think that we are missing something somehow. Right now, a cycle happens if there is an > followed by a >. In other words, an arrow followed by an arrow of the same direction. Where this could trip up is if every arrow ahead has been replaced by another one going another direction. So like criscrosses. The way around that, is that we could:
+- have the cycle tracking system NOT overwrite the coordinates.
+- just look for one instance. Like (4, 5) ^.
+
+On the second one, the problem might be if the cycle is later. So there are a couple steps, and then you end up in the cycle. We can't rule that out.
+
+So I think we just have to update the tracking system. The way we have it now:
+- 2-D array of positions.
+
+What we could do:
+- a dynamically allocated array of Positions, where you search to see if you exist in there at all.
+
+But first we have to check our assumptions by printing out the array at iteration 1472.
+
+Specifically:
+
+#+begin_src
+We are in iter 1472 of 16900, where i = 11 and j = 41
+#+end_src
+
+We can't figure it out. We only know that the infinite loop hits when you use a range between 11 and 41, but not exactly 11 and 41.
+
+Actually, it's when i = 11, and j = 42, not 41. I put the print statement in the wrong place.
+
+And everything looks normal, but the interesting thing is he starts with the O behind him, like this:
+
+#+begin_src
+#XXXX<XO
+#+end_src
+
+And he /enters/ the cycle as we were talking about.
+
+It looks like there is a bug. When Karel is facing up and there is # to the LEFT, he turns. If he runs into the O, he turns twice. There is something wrong here. The Emacs search function makes this work.
+
+Ok, it looks like, we have
+
+#+begin_src
+.#>XXXXXO.
+#+end_src
+
+Where Karel is looping between the # and the O, whereby for some reason, it turns right and thrn turns right again. Still thinking its blocked. But there's a dot there, suggesting that something is not updating right. We will look at the code one more time.
+
+ChatGPT says:
+
+/Nothing is obviously wrong with how Position itself is updated in move or turn_right. The real culprit is likely the mismatch in indexing (i.e., writing the board as board[j][i] but reading it as arr[i][j]). This is almost certainly causing your “weird” behavior where Karel seems to turn right twice./
+
+So we are going to have to fix this, perhaps by re-writing the read-in function so we have a line by line again. I think this is doable.
+
+As chatgpt says:
+
+/Let arr[row][col] be your standard. In C, that means the first index is the row (vertical, top-to-bottom) and the second index is the column (horizontal, left-to-right). Then i typically goes over rows, j typically goes over columns./
+
+Regardless of whether this is the problem or not, I think the first step is to indeed go after this, just for the sake of writing good clean code. Then we can see if the problem persists.
+
+At least today we figured out what the bug looks like, and it was a nifty use of the Emacs built in finding feature. So good job all around. We will get this right in the coming days. But now it is time to start with my day and have some breakfast.
+** December 22
+*** Day 6
+**** get the coordinate read-ins right
+We can actually do this on the normal code, because we are going to read in the file, line by line.
+
+Let's make a text file for the sample.
