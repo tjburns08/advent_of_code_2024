@@ -1,0 +1,18 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     day6_pt2
+relocations:
+  - { offsetInCU: 0x26, offset: 0x26, size: 0x8, addend: 0x0, symName: _clean_line, symObjAddr: 0x0, symBinAddr: 0x1000022E4, symSize: 0x7C }
+  - { offsetInCU: 0x42, offset: 0x42, size: 0x8, addend: 0x0, symName: _clean_line, symObjAddr: 0x0, symBinAddr: 0x1000022E4, symSize: 0x7C }
+  - { offsetInCU: 0x90, offset: 0x90, size: 0x8, addend: 0x0, symName: _read_file, symObjAddr: 0x7C, symBinAddr: 0x100002360, symSize: 0x158 }
+  - { offsetInCU: 0xEC, offset: 0xEC, size: 0x8, addend: 0x0, symName: _find_karel, symObjAddr: 0x1D4, symBinAddr: 0x1000024B8, symSize: 0x1F0 }
+  - { offsetInCU: 0x168, offset: 0x168, size: 0x8, addend: 0x0, symName: _move, symObjAddr: 0x3C4, symBinAddr: 0x1000026A8, symSize: 0x2C4 }
+  - { offsetInCU: 0x1A8, offset: 0x1A8, size: 0x8, addend: 0x0, symName: _turn_right, symObjAddr: 0x688, symBinAddr: 0x10000296C, symSize: 0x204 }
+  - { offsetInCU: 0x1E8, offset: 0x1E8, size: 0x8, addend: 0x0, symName: _print_karel, symObjAddr: 0x88C, symBinAddr: 0x100002B70, symSize: 0xDC }
+  - { offsetInCU: 0x252, offset: 0x252, size: 0x8, addend: 0x0, symName: _check_front, symObjAddr: 0x968, symBinAddr: 0x100002C4C, symSize: 0x2E4 }
+  - { offsetInCU: 0x296, offset: 0x296, size: 0x8, addend: 0x0, symName: _check_front_dir, symObjAddr: 0xC4C, symBinAddr: 0x100002F30, symSize: 0x214 }
+  - { offsetInCU: 0x2DA, offset: 0x2DA, size: 0x8, addend: 0x0, symName: _check_boundary, symObjAddr: 0xE60, symBinAddr: 0x100003144, symSize: 0x1B0 }
+  - { offsetInCU: 0x31E, offset: 0x31E, size: 0x8, addend: 0x0, symName: _count_x, symObjAddr: 0x1010, symBinAddr: 0x1000032F4, symSize: 0xC8 }
+  - { offsetInCU: 0x39A, offset: 0x39A, size: 0x8, addend: 0x0, symName: _karel_action, symObjAddr: 0x10D8, symBinAddr: 0x1000033BC, symSize: 0x2C4 }
+  - { offsetInCU: 0x425, offset: 0x425, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x139C, symBinAddr: 0x100003680, symSize: 0x738 }
+...
